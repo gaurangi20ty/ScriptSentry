@@ -174,6 +174,45 @@ PROPERTY_FORM_REGISTRY = {
 }
 
 
+# --- Deployment helper: ensure real checkpoint is present (not an LFS pointer)
+def _is_lfs_pointer(path) -> bool:
+    try:
+        with open(path, "r", encoding="utf-8", errors="ignore") as fh:
+            start = fh.read(256)
+        return start.startswith("version") or "oid sha256" in start
+    except Exception:
+        return False
+
+
+def _ensure_v4_checkpoint_from_release():
+    """If `checkpoints/v4_final.pt` is missing or is an LFS pointer, try
+    downloading the real file from GitHub Releases. This helps deployments
+    (like Streamlit Cloud) which don't fetch Git LFS objects automatically.
+    """
+    import urllib.request
+
+    ckpt_path = CHECKPOINTS_DIR / "v4_final.pt"
+    if ckpt_path.exists() and not _is_lfs_pointer(ckpt_path):
+        return
+
+    ckpt_path.parent.mkdir(parents=True, exist_ok=True)
+    release_url = (
+        "https://github.com/gaurangi20ty/ScriptSentry/releases/download/v4_final/v4_final.pt"
+    )
+    try:
+        urllib.request.urlretrieve(release_url, str(ckpt_path))
+    except Exception:
+        # Silent fail — app will show model offline and user can provide path
+        return
+
+
+# Attempt to ensure checkpoint at startup (harmless if not reachable)
+try:
+    _ensure_v4_checkpoint_from_release()
+except Exception:
+    pass
+
+
 def _dept_slug(department: str) -> str:
     slug = re.sub(r"[^a-z0-9]+", "_", department.lower()).strip("_")
     return slug or "general_use"
