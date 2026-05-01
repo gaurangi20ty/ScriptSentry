@@ -2149,7 +2149,7 @@ def _page_new_case(title: str = "New Case") -> None:
         st.markdown("<div class='ss-empty'><h4>No Verification File Selected</h4><p>Upload an artifact and click Use Uploaded Artifact.</p></div>", unsafe_allow_html=True)
         return
 
-    c1, c2 = st.columns([1.1, 1])
+    c1, c2 = st.columns([1.6, 1])
     with c1:
         try:
             pseudo_file = io.BytesIO(st.session_state.uploaded_image_bytes)
