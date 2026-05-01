@@ -2172,7 +2172,46 @@ def _page_new_case(title: str = "New Case") -> None:
                     st.warning("Cropper failed to initialize in this environment. Using automatic extraction.")
                     cropped_user_img = None
         else:
-            st.caption("Manual crop tool unavailable (install streamlit-cropper).")
+            with st.expander("Crop signature manually (optional)"):
+                st.write("If automatic extraction fails, use the sliders below to select the signature region.")
+                try:
+                    w, h = img.size
+                except Exception:
+                    w, h = 600, 200
+
+                # session-scoped defaults per upload key
+                crop_left_key = f"{upload_key}_crop_left"
+                crop_top_key = f"{upload_key}_crop_top"
+                crop_right_key = f"{upload_key}_crop_right"
+                crop_bottom_key = f"{upload_key}_crop_bottom"
+
+                if crop_left_key not in st.session_state:
+                    st.session_state[crop_left_key] = 0
+                if crop_top_key not in st.session_state:
+                    st.session_state[crop_top_key] = 0
+                if crop_right_key not in st.session_state:
+                    st.session_state[crop_right_key] = w
+                if crop_bottom_key not in st.session_state:
+                    st.session_state[crop_bottom_key] = h
+
+                c1, c2 = st.columns(2)
+                with c1:
+                    left = st.slider("Left (px)", 0, max(w - 1, 0), int(st.session_state[crop_left_key]), key=crop_left_key)
+                    right = st.slider("Right (px)", 1, max(w, 1), int(st.session_state[crop_right_key]), key=crop_right_key)
+                with c2:
+                    top = st.slider("Top (px)", 0, max(h - 1, 0), int(st.session_state[crop_top_key]), key=crop_top_key)
+                    bottom = st.slider("Bottom (px)", 1, max(h, 1), int(st.session_state[crop_bottom_key]), key=crop_bottom_key)
+
+                # sanitize coordinates
+                left, right = max(0, min(left, right - 1)), max(left + 1, min(right, w))
+                top, bottom = max(0, min(top, bottom - 1)), max(top + 1, min(bottom, h))
+
+                try:
+                    cropped_preview = img.crop((left, top, right, bottom))
+                    st.image(cropped_preview, caption="Cropped preview", use_column_width=True)
+                    cropped_user_img = cropped_preview
+                except Exception:
+                    st.warning("Could not create crop preview. Please adjust sliders.")
         if len(extracted) > 1:
             st.caption(f"{len(extracted)} images detected in artifact.")
     with c2:
