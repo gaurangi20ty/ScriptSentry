@@ -415,9 +415,9 @@ def _inject_modern_theme() -> None:
         .block-container {
             padding-top: 1.2rem;
             padding-bottom: 2rem;
-            padding-left: 1.8rem;
-            padding-right: 1.8rem;
-            max-width: 1280px;
+            padding-left: 1rem;
+            padding-right: 1rem;
+            max-width: 100%;
         }
 
         /* ── Typography ─────────────────────────────────── */
@@ -2149,7 +2149,7 @@ def _page_new_case(title: str = "New Case") -> None:
         st.markdown("<div class='ss-empty'><h4>No Verification File Selected</h4><p>Upload an artifact and click Use Uploaded Artifact.</p></div>", unsafe_allow_html=True)
         return
 
-    c1, c2 = st.columns([1.6, 1])
+    c1, c2 = st.columns([2.5, 1])
     with c1:
         try:
             pseudo_file = io.BytesIO(st.session_state.uploaded_image_bytes)
