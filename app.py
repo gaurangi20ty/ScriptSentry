@@ -410,6 +410,18 @@ def _inject_modern_theme() -> None:
 
         [data-testid="stAppViewContainer"] > .main {
             background: transparent;
+            max-width: 100% !important;
+            width: 100% !important;
+        }
+
+        [data-testid="stAppViewContainer"] {
+            max-width: 100% !important;
+            width: 100% !important;
+        }
+
+        .stApp {
+            max-width: 100% !important;
+            width: 100% !important;
         }
 
         .block-container {
