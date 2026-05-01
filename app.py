@@ -13,6 +13,12 @@ import pandas as pd
 import streamlit as st
 from matplotlib.backends.backend_pdf import PdfPages
 from PIL import Image
+import cv2
+try:
+    from streamlit_cropper import st_cropper
+    _CROPPER_AVAILABLE = True
+except Exception:
+    _CROPPER_AVAILABLE = False
 
 from model_utils import (
     _cosine_similarity,
@@ -217,6 +223,65 @@ try:
     _ensure_v4_checkpoint_from_release()
 except Exception:
     pass
+
+
+# --- Automatic signature extraction (preprocessing)
+def _auto_extract_signature(pil_img: Image.Image) -> Image.Image:
+    """Attempt to isolate handwriting (signature) from a document image.
+    Returns a cropped/filtered PIL Image suitable for model inference.
+    """
+    try:
+        img = np.array(pil_img.convert("L"))
+
+        # Adaptive threshold to get ink (white background -> black foreground)
+        th = cv2.adaptiveThreshold(img, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, 25, 9)
+
+        # Morphology to remove small printed text/stains and connect strokes
+        kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
+        opened = cv2.morphologyEx(th, cv2.MORPH_OPEN, kernel, iterations=1)
+        closed = cv2.morphologyEx(opened, cv2.MORPH_CLOSE, kernel, iterations=1)
+
+        # Find contours and keep the largest connected components (likely handwriting)
+        contours, _ = cv2.findContours(closed, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        if not contours:
+            return pil_img
+
+        # Sort contours by area and keep those above a threshold
+        contours = sorted(contours, key=cv2.contourArea, reverse=True)
+        h, w = img.shape
+        mask = np.zeros_like(img)
+        kept = 0
+        for c in contours:
+            area = cv2.contourArea(c)
+            if area < 200:  # ignore tiny noise
+                continue
+            x, y, cw, ch = cv2.boundingRect(c)
+            # ignore overly large regions that are likely page backgrounds
+            if cw < 10 or ch < 10:
+                continue
+            cv2.drawContours(mask, [c], -1, 255, -1)
+            kept += 1
+            if kept >= 6:
+                break
+
+        # If mask is empty, fallback
+        if np.count_nonzero(mask) == 0:
+            return pil_img
+
+        # Apply mask to original grayscale, then crop to bounding box of mask
+        masked = cv2.bitwise_and(img, img, mask=mask)
+        ys, xs = np.where(mask > 0)
+        if ys.size == 0 or xs.size == 0:
+            return pil_img
+        top, left = max(int(ys.min() - 8), 0), max(int(xs.min() - 8), 0)
+        bottom, right = min(int(ys.max() + 8), h - 1), min(int(xs.max() + 8), w - 1)
+        cropped = masked[top:bottom + 1, left:right + 1]
+
+        # Convert back to PIL and resize to model input scale (preserve aspect)
+        out = Image.fromarray(cropped).convert("L")
+        return out
+    except Exception:
+        return pil_img
 
 
 def _dept_slug(department: str) -> str:
@@ -2096,6 +2161,18 @@ def _page_new_case(title: str = "New Case") -> None:
             return
 
         st.image(img, caption=st.session_state.uploaded_filename or "Verification artifact", use_container_width=True)
+        # Manual crop UI: allow user to select signature region
+        cropped_user_img = None
+        if _CROPPER_AVAILABLE:
+            with st.expander("Crop signature manually (optional)"):
+                st.write("If automatic extraction fails, use the cropper to select the signature region.")
+                try:
+                    cropped_user_img = st_cropper(img, realtime_update=False, box_color="#0000ff")
+                except Exception:
+                    st.warning("Cropper failed to initialize in this environment. Using automatic extraction.")
+                    cropped_user_img = None
+        else:
+            st.caption("Manual crop tool unavailable (install streamlit-cropper).")
         if len(extracted) > 1:
             st.caption(f"{len(extracted)} images detected in artifact.")
     with c2:
@@ -2140,9 +2217,14 @@ def _page_new_case(title: str = "New Case") -> None:
             claimed_writer_id = label_to_id[claimed_label]
             with st.spinner("Running writer verification..."):
                 if verification_mode == "Single Image":
+                    # Prefer user-cropped image if provided, else automatic extraction
+                    if cropped_user_img is not None:
+                        proc_img = cropped_user_img.convert("L") if isinstance(cropped_user_img, Image.Image) else cropped_user_img
+                    else:
+                        proc_img = _auto_extract_signature(img)
                     top_preds = predict_topk_enrolled_writers(
                         model=st.session_state.bundle.model,
-                        pil_image=img,
+                        pil_image=proc_img,
                         device=st.session_state.bundle.device,
                         enrolled_store=enrolled,
                         top_k=5,
@@ -2163,9 +2245,14 @@ def _page_new_case(title: str = "New Case") -> None:
                 else:
                     per_image_results = []
                     for idx, image_item in enumerate(extracted, start=1):
+                        # Prefer user-cropped image when available (single-image flow), otherwise auto-extract
+                        if cropped_user_img is not None and verification_mode == "Single Image":
+                            proc_image = cropped_user_img.convert("L") if isinstance(cropped_user_img, Image.Image) else cropped_user_img
+                        else:
+                            proc_image = _auto_extract_signature(image_item)
                         image_top_preds = predict_topk_enrolled_writers(
                             model=st.session_state.bundle.model,
-                            pil_image=image_item,
+                            pil_image=proc_image,
                             device=st.session_state.bundle.device,
                             enrolled_store=enrolled,
                             top_k=5,
