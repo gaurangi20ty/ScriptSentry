@@ -410,26 +410,28 @@ def _inject_modern_theme() -> None:
 
         [data-testid="stAppViewContainer"] > .main {
             background: transparent;
-            max-width: 100% !important;
-            width: 100% !important;
+            max-width: calc(100vw - 280px) !important;
+            width: calc(100vw - 280px) !important;
+            padding: 0 !important;
         }
 
         [data-testid="stAppViewContainer"] {
-            max-width: 100% !important;
-            width: 100% !important;
+            max-width: 100vw !important;
+            width: 100vw !important;
         }
 
         .stApp {
-            max-width: 100% !important;
-            width: 100% !important;
+            max-width: 100vw !important;
+            width: 100vw !important;
         }
 
         .block-container {
             padding-top: 1.2rem;
             padding-bottom: 2rem;
-            padding-left: 1rem;
-            padding-right: 1rem;
-            max-width: 100%;
+            padding-left: 0.5rem !important;
+            padding-right: 0.5rem !important;
+            max-width: 100% !important;
+            width: 100% !important;
         }
 
         /* ── Typography ─────────────────────────────────── */
