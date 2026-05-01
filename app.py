@@ -200,10 +200,16 @@ def _ensure_v4_checkpoint_from_release():
         "https://github.com/gaurangi20ty/ScriptSentry/releases/download/v4_final/v4_final.pt"
     )
     try:
-        urllib.request.urlretrieve(release_url, str(ckpt_path))
+            print(f"Attempting to download checkpoint from: {release_url}")
+            urllib.request.urlretrieve(release_url, str(ckpt_path))
+            print(f"Downloaded checkpoint to: {ckpt_path}")
     except Exception:
         # Silent fail — app will show model offline and user can provide path
-        return
+            import traceback
+            print(f"Failed to download checkpoint from release: {release_url}")
+            traceback.print_exc()
+            # Silent fail — app will show model offline and user can provide path
+            return
 
 
 # Attempt to ensure checkpoint at startup (harmless if not reachable)
