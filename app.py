@@ -3023,7 +3023,7 @@ def _render_domain_selection_page() -> None:
     st.markdown("### About ScriptSentry")
     st.markdown(
         """
-        **Continual Learning**: ScriptSentry uses an advanced Elastic Weight Consolidation (EWC) architecture to continuously learn new handwriting signatures without forgetting previously enrolled ones.  
+        **Continual Learning**: ScriptSentry uses a hybrid Elastic Weight Consolidation (EWC) and Replay architecture to continuously learn new handwriting signatures without forgetting previously enrolled ones.  
         **Benefits**: Instantly verify documents against enrolled user writing, significantly reduce manual operational overhead, and dynamically adapt to changing handwriting data over time.  
         **How to Use**: Select an operating domain below. From your domain's workspace, you can enroll writers, submit new verifications, and manage escalated risk alerts.  
         **Features**: Multi-format support (Images/PDFs/ZIPs), GradCAM Explainability, Proxy Writer Detection, Transaction Risk Tiering, Legal Chain of Title Verification, and A/B Specimen Testing.
