@@ -1120,8 +1120,10 @@ def _reset_uploaded_artifact() -> None:
 
 
 def _reset_single_enrollment_state() -> None:
-    st.session_state.enroll_writer_name = ""
-    st.session_state.enroll_writer_name__seed = ""
+    # Remove keys so Streamlit widgets start fresh (clears value + placeholder seed)
+    st.session_state.pop("enroll_writer_name", None)
+    st.session_state.pop("enroll_writer_name__seed", None)
+    # Rotate uploader key so file_uploader is reset in the UI
     st.session_state.enroll_writer_uploader_counter += 1
 
 
